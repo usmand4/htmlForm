@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Capture</title>
+    <title>Media Capture</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,22 +43,47 @@
 </head>
 
 <body>
-    <h1>Image Capture</h1>
+    <h1>Media Capture</h1>
 
     <video id="video" autoplay></video>
     <canvas id="canvas"></canvas>
     <button id="captureButton">Capture Image</button>
+    <button id="recordButton">Start Recording</button>
+    <button id="stopRecordButton" style="display:none;">Stop Recording</button>
 
     <script>
-        'use strict'
+        'use strict';
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const captureButton = document.getElementById('captureButton');
+            const recordButton = document.getElementById('recordButton');
+            const stopRecordButton = document.getElementById('stopRecordButton');
+            let mediaRecorder;
+            let recordedChunks = [];
 
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then((stream) => {
                     video.srcObject = stream;
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        document.body.appendChild(a);
+                        a.style = 'display: none';
+                        a.href = url;
+                        a.download = 'captured-video.webm';
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    };
                 })
                 .catch((error) => {
                     console.error('Error accessing camera:', error);
@@ -72,6 +97,19 @@
                 link.href = dataUrl;
                 link.download = 'captured-image.png';
                 link.click();
+            });
+
+            recordButton.addEventListener('click', () => {
+                recordedChunks = [];
+                mediaRecorder.start();
+                recordButton.style.display = 'none';
+                stopRecordButton.style.display = 'inline-block';
+            });
+
+            stopRecordButton.addEventListener('click', () => {
+                mediaRecorder.stop();
+                stopRecordButton.style.display = 'none';
+                recordButton.style.display = 'inline-block';
             });
         });
     </script>
